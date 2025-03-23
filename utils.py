@@ -1,6 +1,6 @@
 import platform, os, re
 import keyring
-
+from pathlib import Path
 
 def clear_console():
     """
@@ -48,3 +48,13 @@ def save_api_key():
 def get_api_key() -> str:
     """Retrieves the API key from the OS keyring."""
     return keyring.get_password("PrismObsidian", "PrismObsidian")
+
+def get_suffix(path: Path) -> str:
+    return re.sub(r'(\.jar|\.jar\.disabled)\..*', r'\1', str(path))
+
+def get_stem(path: Path) -> str:
+    res = re.sub(r'(\.jar|\.jar\.disabled)$', '', path.stem)
+    return res
+
+def path_without_suffix(path: Path) -> Path:
+    return path.parent / get_stem(path)

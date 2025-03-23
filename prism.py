@@ -5,7 +5,7 @@ from modrinth import Modrinth
 import toml
 from tqdm import tqdm
 import os
-from utils import sanitize_filename, get_api_key
+from utils import sanitize_filename, get_api_key, get_stem
 
 
 class Prism:
@@ -23,11 +23,27 @@ class Prism:
                 result.append(res)
         return result
 
-    def single_data(self, path: Path | str) -> dict | None:
+    @property
+    def local_data(self) -> list[dict]:
+        result = []
+        for path in self.toml:
+            data = self.local_single_data(path)
+            result.append(data)
+        return result
+
+    def local_single_data(self, path: Path) -> dict:
+        data = toml.loads(path.read_text(encoding="utf-8"))
+        data["name"] = sanitize_filename(data["name"])
+        data["enabled"] = data["filename"] in [p.name for p in self.enabled_mods]
+        data["path"] = path
+        return data
+
+    def single_data(self, path: Path | str, anyway=False) -> dict | None:
         """Get mod details from a .ps.toml file and Modrinth. Returns a dictionary or None if no data is found."""
         data = toml.loads(path.read_text(encoding="utf-8"))
         data["name"] = sanitize_filename(data["name"])
-        if self.obsidian.check_md(data):
+        data["path"] = Path(path)
+        if self.obsidian.check_md(data) and not anyway:
             return None
         data["enabled"] = data["filename"] in [p.name for p in self.enabled_mods]
         if data["update"].get("modrinth"):
@@ -70,7 +86,9 @@ class Prism:
     @property
     def mods(self) -> list[Path]:
         """Return a list of all mod files (.jar and .disabled)."""
-        return list(Path(self.instance).glob("minecraft/mods/*.{jar,disabled}"))
+        jar_files = list(Path(self.instance).glob("minecraft/mods/*.jar"))
+        disabled_files = list(Path(self.instance).glob("minecraft/mods/*.disabled"))
+        return jar_files + disabled_files
 
     @property
     def enabled_mods(self) -> list[Path]:
@@ -93,3 +111,21 @@ class Prism:
             if instance.is_dir()
             and (instance / "minecraft").is_dir()
         ]
+
+    def get_data_from_saved(self, saved, name="", path=Path()):
+        for data in saved:
+            if name == data["name"]:
+                return data
+            print(name, path, get_stem(path) + ".jar", data["filename"], sep="\n")
+            if get_stem(path) + ".jar" == data["filename"]:
+                return data
+
+    def get_data(self, name="", path=Path("")):
+        for data in self.local_data:
+            if path:
+                if data["filename"] == get_stem(path) + ".jar":
+                    return self.single_data(data["path"], anyway=True)
+            print(data["name"], name)
+            if data["name"] == name:
+                return self.single_data(data["path"], anyway=True)
+

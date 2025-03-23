@@ -4,8 +4,11 @@ from obsidian import Obsidian
 from utils import clear_console, save_api_key, get_api_key
 from prism import Prism
 from setting import settings
+from watchdog.observers import Observer
 from tkinter.filedialog import askdirectory
 from tqdm import tqdm
+from observer import EventManager, ModEventsHandler
+import time
 
 
 class Menu:
@@ -30,11 +33,29 @@ class Menu:
                         save_api_key()
                     obsidian = Obsidian(settings.OBSIDIAN_PATH)
                     prism = Prism(settings.INSTANCE_PATH, obsidian)
+                    obsidian.prism = prism
 
                     for path in tqdm(prism.toml, desc="Loading..."):
                         if res := prism.single_data(path):
-                            obsidian.create_md(res)
-                    break
+                            obsidian.create_mod(res)
+                    # for md in obsidian.mods:
+                    #     md_name = str(Path(md.stem))
+                    #     if md_name not in [data["name"] for data in prism.local_data]:
+                    #         obsidian.delete_md(md_name)
+
+                    observer = Observer()
+                    event_manager = EventManager(prism, obsidian)
+                    handler = ModEventsHandler(event_manager)
+                    observer.schedule(handler, Path(settings.INSTANCE_PATH) / "minecraft" / "mods", recursive=True)
+                    observer.schedule(handler, Path(settings.OBSIDIAN_PATH) / settings.OBSIDIAN_MODS_FOLDER, recursive=False)
+                    event_manager.start_ticks()
+                    observer.start()
+                    try:
+                        while True:
+                            time.sleep(0.0001)
+                    except KeyboardInterrupt:
+                        observer.stop()
+                    observer.join()
                 case "2":
                     instance = cls.select_instance()
                     settings.INSTANCE_PATH = str(instance)
@@ -47,7 +68,6 @@ class Menu:
                     cls.quit()
                 case _:
                     clear_console()
-
 
 
     @classmethod

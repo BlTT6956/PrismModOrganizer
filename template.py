@@ -39,4 +39,6 @@ Side: {data['side']}
 '''}
 {" ".join(sorted(list(dict.fromkeys([f"#{curseforge_to_modrinth(i)}".lower() for i in data["project"]["categories"]]))))}
 #{data["side"]}
+
+---
 """
