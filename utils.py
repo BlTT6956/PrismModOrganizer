@@ -1,4 +1,4 @@
-import platform, os, re
+import platform, os, re, sys
 import keyring
 from pathlib import Path
 
@@ -38,16 +38,25 @@ def format_list(lst: list) -> list:
     """
     return [f"[[{elem}]]" for elem in lst]
 
-def read_whitelist():
-    default = ["enable", "game_versions"]
-
-    if Path("tags_whitelist.txt").exists():
-        with open("tags_whitelist.txt", "r") as file:
-            return file.read().split("\n")
+def base_path(path):
+    if getattr(sys, 'frozen', False):
+        (Path(os.getenv("APPDATA", os.getcwd())) / "PrismModOrganizer").mkdir(parents=True, exist_ok=True)
+        return Path(os.getenv("APPDATA", os.getcwd())) / "PrismModOrganizer" / path
     else:
-        with open("tags_whitelist.txt", "w") as file:
-            file.writelines(default)
-            return default
+        return Path(os.getcwd()) / path
+
+
+def read_whitelist():
+    default = ["Enabled", "Side", "Loaders", "Release type", "Game versions", "Platform", "Tags"]
+    whitelist_path = base_path("tags_whitelist.txt")
+    if whitelist_path.exists():
+        with open(whitelist_path, "r", encoding='utf-8') as file:
+            return file.read().splitlines()
+    else:
+        with open(whitelist_path, "w", encoding='utf-8') as file:
+            file.writelines("\n".join(default))
+        return default
+
 
 def save_api_key():
     """Asks the user for an API key and stores it in the OS keyring."""

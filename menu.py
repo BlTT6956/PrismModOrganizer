@@ -34,6 +34,7 @@ class Menu:
                     if not settings.INSTANCE_PATH:
                         instance = cls.select_instance()
                         settings.INSTANCE_PATH = str(instance)
+                        clear_console()
                     if not settings.OBSIDIAN_MAIN_PATH:
                         Vault.select_obsidian_vault_folder()
                     if not settings.OBSIDIAN_MODS_PATH:
@@ -44,9 +45,14 @@ class Menu:
                         Vault.select_obsidian_template()
                     if not get_api_key():
                         save_api_key()
+                    clear_console()
 
                     process = Processor()
                     process.startup_mods()
+                    clear_console()
+                    print("The program is running.")
+                    print("Synchronization between Prism and Obsidian is in progress...")
+                    print("Press Ctrl + C to stop.")
                     process.run()
 
 
