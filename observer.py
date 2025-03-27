@@ -1,9 +1,10 @@
 from pathlib import Path
 from queue import Queue
+import re
 
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
-from utils import stem
+from utils import stem, suffix
 
 
 class ModFileHandler(FileSystemEventHandler):
@@ -31,15 +32,22 @@ class ModFileHandler(FileSystemEventHandler):
             src = Path(event.src_path)
             dest = Path(event.dest_path)
             if src.parent == dest.parent and stem(src) == stem(dest):
-                if src.suffix == ".jar" and dest.suffix == ".jar.disabled":
+                if suffix(src) == ".jar" and suffix(dest) == ".jar.disabled":
                     self.disable_mod(src)
-                elif src.suffix == ".jar.disabled" and dest.suffix == ".jar":
+                elif suffix(src) == ".jar.disabled" and suffix(dest) == ".jar":
                     self.enable_mod(src)
 
     def on_created(self, event):
-        if not event.is_directory and (event.src_path.endswith(".jar") or event.src_path.endswith(".jar.disabled")):
-            return self.create_mod(Path(event.src_path))
+        if not event.is_directory and re.search(r"\.jar\.\w+$", event.src_path):
+            return self.create_mod(Path(re.sub(r"\.jar\.\w+$", ".jar", event.src_path)))
 
     def on_deleted(self, event):
-        if not event.is_directory and (event.dest_path.endswith(".jar") or event.dest_path.endswith(".jar.disabled")):
+        if not event.is_directory and (event.src_path.endswith(".jar") or event.src_path.endswith(".jar.disabled")):
             return self.delete_mod(Path(event.src_path))
+
+    # def on_modified(self, event):
+    #     if not event.is_directory:
+    #         if event.src_path.endswith(".jar.disabled"):
+    #             self.disable_mod(Path(event.src_path))
+    #         elif event.src_path.endswith(".jar"):
+    #             self.enable_mod(Path(event.src_path))

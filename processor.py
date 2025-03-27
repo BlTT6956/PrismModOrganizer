@@ -12,7 +12,7 @@ from curseforge import CurseForge
 from prism import Prism
 from setting import settings
 from obsidian import Vault, Note
-from utils import suffix, read_whitelist
+from utils import suffix, stem
 from observer import ModFileHandler
 
 class Processor:
@@ -77,16 +77,16 @@ class Processor:
             return self.obsidian.create_note(data["Name"], metadata=data, content=self.template)
 
     def enable_mod(self, path: Path | str) -> Note:
-        data = self.load_basic(path)
-        return self.obsidian.find_mod("Stem", data["Stem"]).enable()
+        data = stem(path)
+        return self.obsidian.find_mod("Stem", data).enable()
 
     def disable_mod(self, path: Path | str) -> Note:
-        data = self.load_basic(path)
-        return self.obsidian.find_mod("Stem", data["Stem"]).disable()
+        data = stem(path)
+        return self.obsidian.find_mod("Stem", data).disable()
 
     def delete_mod(self, path: Path | str) -> Note:
-        data = self.load_basic(path)
-        return self.obsidian.find_mod("Stem", data["Stem"]).archive()
+        data = stem(path)
+        return self.obsidian.find_mod("Stem", data).archive()
 
     def process_tasks(self, task_queue: Queue):
         while True:
@@ -106,13 +106,12 @@ class Processor:
             task_queue.task_done()
 
     def run(self):
-        task_queue = Queue()
         observer = Observer()
-        event_handler = ModFileHandler(task_queue)
+        event_handler = ModFileHandler(Queue())
         observer.schedule(event_handler, self.instance.instance / "minecraft" / "mods", recursive=False)
         observer.start()
 
-        worker_thread = threading.Thread(target=self.process_tasks, args=(task_queue,), daemon=True)
+        worker_thread = threading.Thread(target=self.process_tasks, args=(event_handler.queue,), daemon=True)
         worker_thread.start()
 
         try:
@@ -120,6 +119,6 @@ class Processor:
                 time.sleep(1)
         except KeyboardInterrupt:
             observer.stop()
-            task_queue.put(None)
+            event_handler.queue.put(None)
         observer.join()
         worker_thread.join()

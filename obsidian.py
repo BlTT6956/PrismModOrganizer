@@ -20,11 +20,34 @@ class Vault:
         self.template_path.parent.mkdir(parents=True, exist_ok=True)
         self.snippets_folder = (self.main_folder / ".obsidian" / "snippets")
         self.snippets_folder.mkdir(parents=True, exist_ok=True)
+
         if not self.template_path.exists():
             self.template_path.touch()
+
         self.whitelist = read_whitelist()
         self.whitelist_snippet()
         self.hide_prop_add_button_snippet()
+
+        self.cached_mods = None
+        self.cached_archive = None
+
+    def _load_mods(self):
+        self.cached_mods = [Note(self, path) for path in self.mod_files]
+
+    def _load_archive(self):
+        self.cached_archive = [Note(self, path) for path in self.archive_files]
+
+    @staticmethod
+    def reset_template():
+        if not settings.OBSIDIAN_TEMPLATE_PATH:
+            Vault.select_obsidian_template()
+            Vault.reset_template()
+        else:
+            Path(settings.OBSIDIAN_TEMPLATE_PATH).parent.mkdir(parents=True, exist_ok=True)
+            with open(settings.OBSIDIAN_TEMPLATE_PATH, "w") as file:
+                file.write("---\n\n")
+                file.write("`= \"![|150](\" + this.icon + \")\"`\n\n")
+                file.write("`= this.description`")
 
     def hide_prop_add_button_snippet(self):
         snippets_file = self.snippets_folder / "PMO-HidePropAddButton.css"
@@ -49,8 +72,6 @@ class Vault:
                 f.write(f"div.metadata-properties > div.metadata-property[data-property-key=\"{prop}\"] {{\n")
                 f.write("  display: flex !important;\n")
                 f.write("}\n")
-
-
 
     @staticmethod
     def select_obsidian_folder(title: str = ""):
@@ -93,44 +114,36 @@ class Vault:
         settings.OBSIDIAN_TEMPLATE_PATH = str(instance)
 
     def find_mod(self, key, value):
-        for mod in self.mods:
-            if mod.get(key) == value:
-                return mod
+        return next((mod for mod in self.mods if mod.get(key) == value), None)
 
     def find_mods(self, key, value):
-        result = []
-        for mod in self.mods:
-            if mod.get(key) == value:
-                result.append(mod)
-        return result
+        return [mod for mod in self.mods if mod.get(key) == value]
 
     def find_archive(self, key, value):
-        for mod in self.archive:
-            if mod.get(key) == value:
-                return mod
+        return next((mod for mod in self.archive if mod.get(key) == value), None)
 
     def find_archives(self, key, value):
-        result = []
-        for mod in self.mods:
-            if mod.get(key) == value:
-                result.append(mod)
-        return result
+        return [mod for mod in self.archive if mod.get(key) == value]
 
     @property
     def archive_files(self):
-        return self.archive_folder.glob("*.md")
+        return list(self.archive_folder.glob("*.md"))
 
     @property
     def mod_files(self):
-        return self.mods_folder.glob("*.md")
+        return list(self.mods_folder.glob("*.md"))
 
     @property
     def archive(self):
-        return [Note(self, path) for path in self.archive_files]
+        if self.cached_archive is None:
+            self._load_archive()
+        return self.cached_archive
 
     @property
     def mods(self):
-        return [Note(self, path) for path in self.mod_files]
+        if self.cached_mods is None:
+            self._load_mods()
+        return self.cached_mods
 
     @property
     def archive_dict(self):
@@ -142,16 +155,23 @@ class Vault:
 
     def create_note(self, name: str, content: str = None, metadata: dict = None, to_archive=False):
         note_name = f"{name}.md"
-        if to_archive:
-            note_path = self.archive_folder / note_name
-        else:
-            note_path = self.mods_folder / note_name
+        note_path = self.archive_folder / note_name if to_archive else self.mods_folder / note_name
+
         with open(note_path, 'w', encoding='utf-8') as file:
             if content:
                 file.write(content)
+
         note = Note(self, note_path)
         if metadata:
             note.metadata = metadata
+
+        if to_archive:
+            if self.cached_archive is not None:
+                self.cached_archive.append(note)
+        else:
+            if self.cached_mods is not None:
+                self.cached_mods.append(note)
+
         return note
 
 
@@ -159,6 +179,8 @@ class Note:
     def __init__(self, vault: Vault, path: Path):
         self.vault = vault
         self.path = path
+        self._cached_content = None
+        self._cached_metadata = None
 
     @property
     def content(self):
@@ -174,12 +196,15 @@ class Note:
 
     @property
     def metadata(self):
-        return self._load_metadata()
+        if self._cached_metadata is None:
+            self._cached_metadata = self._load_metadata()
+        return self._cached_metadata
 
     @metadata.setter
     def metadata(self, value):
         if not isinstance(value, dict):
             raise ValueError("Metadata must be a dictionary.")
+        self._cached_metadata = value  # Обновляем кэш
         self._save_metadata(value)
 
     def has_metadata(self):
@@ -202,33 +227,33 @@ class Note:
         return self.metadata.get(key, None)
 
     def set(self, key, value):
-        self.metadata[key] = value
-        self._save_metadata()
+        new_metadata = self.metadata
+        new_metadata[key] = value
+        self._save_metadata(new_metadata)
         return self
 
     def _load_metadata(self):
         if self.has_metadata():
-            metadata = self.extract_metadata()
-            return metadata
+            return self.extract_metadata()
         return {}
 
     def _save_metadata(self, metadata=None):
         if metadata is None:
             metadata = self.metadata
 
+        new_metadata = yaml.dump(metadata, default_flow_style=False, sort_keys=False).strip()
+
         if self.has_metadata():
             content_without_metadata = self.extract_content()
-            new_metadata = yaml.dump(metadata, default_flow_style=False, sort_keys=False).strip()
-            new_content = f"---\n{new_metadata}\n---\n{content_without_metadata}"
-
         else:
-            new_metadata = yaml.dump(metadata, default_flow_style=False, sort_keys=False).strip()
-            new_content = f"---\n{new_metadata}\n---\n{self.content}"
+            content_without_metadata = self.content
+
+        new_content = f"---\n{new_metadata}\n---\n{content_without_metadata}"
+        self._cached_content = new_content
+        self._cached_metadata = metadata
 
         with open(self.path, 'w', encoding='utf-8') as file:
-            file.seek(0)
             file.write(new_content)
-            file.truncate()
 
     @property
     def archived(self):
@@ -236,10 +261,12 @@ class Note:
 
     def archive(self):
         destination = self.vault.archive_folder / self.path.name
-        if destination not in self.vault.archive:
+        if destination not in self.vault.archive_files:
             self.vault.archive_folder.mkdir(parents=True, exist_ok=True)
             shutil.move(str(self.path), destination)
             self.path = destination
+            self.vault.cached_archive.append(self)
+            self.vault.cached_mods.remove(self)
         return self
 
     def recover(self):
@@ -248,6 +275,8 @@ class Note:
             self.vault.mods_folder.mkdir(parents=True, exist_ok=True)
             shutil.move(str(self.path), destination)
             self.path = destination
+            self.vault.cached_mods.append(self)
+            self.vault.cached_archive.remove(self)
         return self
 
     @property

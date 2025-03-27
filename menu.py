@@ -58,6 +58,7 @@ class Menu:
                         print("2) Set CurseForge API")
                         print("3) Paths config")
                         print("4) Open properties whitelist")
+                        print("5) Reset Obsidian mod template file")
                         answer = input("~ ")
                         match answer:
                             case "1":
@@ -92,6 +93,8 @@ class Menu:
                                             Vault.select_obsidian_template()
                             case "4":
                                 Menu.open_txt("tags_whitelist.txt")
+                            case "5":
+                                Vault.reset_template()
                 case "3":
                     cls.quit()
 
