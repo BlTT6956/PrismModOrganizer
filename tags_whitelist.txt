@@ -1,0 +1,7 @@
+Enabled
+Side
+Loaders
+Release type
+Game versions
+Platform
+Tags

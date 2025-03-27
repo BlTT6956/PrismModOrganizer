@@ -1,23 +1,15 @@
-from dynaconf import Dynaconf
 import json
-
-GITHUB_USERNAME = "BlTT6956"
-PROJECT_NAME = "PrismModOrganizer"
-VERSION = "1.0.0"
-CONTACT = "bltt6956@gmail.com"
-
-MODRINTH_PROJECT = "https://api.modrinth.com/v2/project/{}"
-MODRINTH_VERSION = "https://api.modrinth.com/v2/version/{}"
-MODRINTH_USER_AGENT = "{}/{}/{} ({})"
-
-CURSEFORGE_PROJECT = "https://api.curseforge.com/v1/mods/{}"
-CURSEFORGE_VERSION = "https://api.curseforge.com/v1/mods/{}/files/{}"
+from pathlib import Path
 
 
 default_json = {
     "INSTANCE_PATH": "",
-    "OBSIDIAN_PATH": ""
+    "OBSIDIAN_MODS_PATH": "",
+    "OBSIDIAN_ARCHIVE_PATH": "",
+    "OBSIDIAN_TEMPLATE_PATH": "",
+    "OBSIDIAN_MAIN_PATH": ""
 }
+
 
 class Settings:
     def __init__(self, file_path, default_json):

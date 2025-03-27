@@ -1,128 +1,271 @@
-import os
-import shutil
 from pathlib import Path
-import threading
-from template import template
+import yaml
+import shutil
+from tkinter.filedialog import askdirectory, askopenfilename
+import tkinter as tk
+from utils import read_whitelist
+import re
+
 from setting import settings
 
+class Vault:
+    def __init__(self, main_path: Path | str, mods_path: Path | str, archive_path: Path | str, template_path: Path | str):
+        self.main_folder = Path(main_path)
+        self.main_folder.mkdir(parents=True, exist_ok=True)
+        self.mods_folder = Path(mods_path)
+        self.mods_folder.mkdir(parents=True, exist_ok=True)
+        self.archive_folder = Path(archive_path)
+        self.archive_folder.mkdir(parents=True, exist_ok=True)
+        self.template_path = Path(template_path)
+        self.template_path.parent.mkdir(parents=True, exist_ok=True)
+        self.snippets_folder = (self.main_folder / ".obsidian" / "snippets")
+        self.snippets_folder.mkdir(parents=True, exist_ok=True)
+        if not self.template_path.exists():
+            self.template_path.touch()
+        self.whitelist = read_whitelist()
+        self.whitelist_snippet()
+        self.hide_prop_add_button_snippet()
 
-class Obsidian:
-    def __init__(self, path):
-        self.path = Path(path)
-        self.prism = None
-        self.mod_folder = self.path / Path(settings.OBSIDIAN_MODS_FOLDER)
-        self.mod_folder.mkdir(parents=True, exist_ok=True)
-        self.deleted_folder = self.path / Path(settings.OBSIDIAN_DELETED_FOLDER)
-        self.deleted_folder.mkdir(parents=True, exist_ok=True)
+    def hide_prop_add_button_snippet(self):
+        snippets_file = self.snippets_folder / "PMO-HidePropAddButton.css"
+        if not snippets_file.exists():
+            snippets_file.touch()
+        with open(snippets_file, 'w') as f:
+            #f.write(".markdown-preview-view\n")
+            f.write(".metadata-add-button {\n")
+            f.write("  display: none;\n")
+            f.write("}\n")
+
+    def whitelist_snippet(self):
+        snippets_file = self.snippets_folder / "PMO-Whitelist.css"
+        if not snippets_file.exists():
+            snippets_file.touch()
+        with open(snippets_file, 'w') as f:
+            f.write("div.metadata-properties > div.metadata-property {\n")
+            f.write("  display: none !important;\n")
+            f.write("}\n\n")
+
+            for prop in self.whitelist:
+                f.write(f"div.metadata-properties > div.metadata-property[data-property-key=\"{prop}\"] {{\n")
+                f.write("  display: flex !important;\n")
+                f.write("}\n")
+
+
+
+    @staticmethod
+    def select_obsidian_folder(title: str = ""):
+        root = tk.Tk()
+        root.withdraw()
+        root.lift()
+        root.focus_force()
+        return askdirectory(parent=root, title=title)
+
+    @staticmethod
+    def select_obsidian_path(title: str = ""):
+        root = tk.Tk()
+        root.withdraw()
+        root.lift()
+        root.focus_force()
+        return askopenfilename(parent=root, title=title, filetypes=[("Markdown Files", "*.md")])
+
+    @staticmethod
+    def select_obsidian_vault_folder():
+        print("Select the main Obsidian Vault folder...")
+        instance = Vault.select_obsidian_folder("Select the main Obsidian Vault folder...")
+        settings.OBSIDIAN_MAIN_PATH = str(instance)
+
+    @staticmethod
+    def select_obsidian_mods_folder():
+        print("Select the Obsidian mods folder...")
+        instance = Vault.select_obsidian_folder("Select the Obsidian mods folder...")
+        settings.OBSIDIAN_MODS_PATH = str(instance)
+
+    @staticmethod
+    def select_obsidian_archive_folder():
+        print("Select the Obsidian archive folder...")
+        instance = Vault.select_obsidian_folder("Select the Obsidian archive folder...")
+        settings.OBSIDIAN_ARCHIVE_PATH = str(instance)
+
+    @staticmethod
+    def select_obsidian_template():
+        print("Select a template for mods in Obsidian...")
+        instance = Vault.select_obsidian_path("Select a template for mods in Obsidian...")
+        settings.OBSIDIAN_TEMPLATE_PATH = str(instance)
+
+    def find_mod(self, key, value):
+        for mod in self.mods:
+            if mod.get(key) == value:
+                return mod
+
+    def find_mods(self, key, value):
+        result = []
+        for mod in self.mods:
+            if mod.get(key) == value:
+                result.append(mod)
+        return result
+
+    def find_archive(self, key, value):
+        for mod in self.archive:
+            if mod.get(key) == value:
+                return mod
+
+    def find_archives(self, key, value):
+        result = []
+        for mod in self.mods:
+            if mod.get(key) == value:
+                result.append(mod)
+        return result
+
+    @property
+    def archive_files(self):
+        return self.archive_folder.glob("*.md")
+
+    @property
+    def mod_files(self):
+        return self.mods_folder.glob("*.md")
+
+    @property
+    def archive(self):
+        return [Note(self, path) for path in self.archive_files]
 
     @property
     def mods(self):
-        return self.mod_folder.glob("*.md")
+        return [Note(self, path) for path in self.mod_files]
 
-    def create_mod(self, param, saved=None):
-        thread = threading.Thread(target=self._create_mod, args=(param, saved))
-        thread.start()
+    @property
+    def archive_dict(self):
+        return {note.get("Stem"): note for note in self.archive}
 
-    def _create_mod(self, param, saved=None):
-        if isinstance(param, dict):
-            data = param
+    @property
+    def mods_dict(self):
+        return {note.get("Stem"): note for note in self.mods}
+
+    def create_note(self, name: str, content: str = None, metadata: dict = None, to_archive=False):
+        note_name = f"{name}.md"
+        if to_archive:
+            note_path = self.archive_folder / note_name
         else:
-            if saved:
-                data = self.prism.get_data_from_saved(path=param, saved=saved)
-            else:
-                data = self.prism.get_data(path=param)
-        file_name = f"{data['name']}.md"
-        file_path = self.mod_folder / file_name
-        deleted_file_path = self.deleted_folder / file_name
+            note_path = self.mods_folder / note_name
+        with open(note_path, 'w', encoding='utf-8') as file:
+            if content:
+                file.write(content)
+        note = Note(self, note_path)
+        if metadata:
+            note.metadata = metadata
+        return note
 
-        if deleted_file_path.exists():
-            shutil.move(deleted_file_path, file_path)
-            self.update_mod(data, saved)
+
+class Note:
+    def __init__(self, vault: Vault, path: Path):
+        self.vault = vault
+        self.path = path
+
+    @property
+    def content(self):
+        with open(self.path, 'r', encoding='utf-8') as file:
+            return file.read()
+
+    @content.setter
+    def content(self, value):
+        if not isinstance(value, str):
+            raise ValueError("Content must be string.")
+        with open(self.path, 'w', encoding='utf-8') as file:
+            file.write(value)
+
+    @property
+    def metadata(self):
+        return self._load_metadata()
+
+    @metadata.setter
+    def metadata(self, value):
+        if not isinstance(value, dict):
+            raise ValueError("Metadata must be a dictionary.")
+        self._save_metadata(value)
+
+    def has_metadata(self):
+        return bool(re.match(r"^---\n(.*?)\n---\n", self.content, re.DOTALL))
+
+    def extract_metadata(self):
+        match = re.match(r"^---\n(.*?)\n---\n", self.content, re.DOTALL)
+        if not match:
+            return {}
+
+        try:
+            return yaml.safe_load(match.group(1)) or {}
+        except yaml.YAMLError:
+            return {}
+
+    def extract_content(self):
+        return re.sub(r"^---\n.*?\n---\n", "", self.content, flags=re.DOTALL).lstrip()
+
+    def get(self, key):
+        return self.metadata.get(key, None)
+
+    def set(self, key, value):
+        self.metadata[key] = value
+        self._save_metadata()
+        return self
+
+    def _load_metadata(self):
+        if self.has_metadata():
+            metadata = self.extract_metadata()
+            return metadata
+        return {}
+
+    def _save_metadata(self, metadata=None):
+        if metadata is None:
+            metadata = self.metadata
+
+        if self.has_metadata():
+            content_without_metadata = self.extract_content()
+            new_metadata = yaml.dump(metadata, default_flow_style=False, sort_keys=False).strip()
+            new_content = f"---\n{new_metadata}\n---\n{content_without_metadata}"
+
         else:
-            if not self.check_md(data):
-                with open(file_path, "w") as f:
-                    f.write(template(data))
-            else:
-                self.update_mod(data, saved)
+            new_metadata = yaml.dump(metadata, default_flow_style=False, sort_keys=False).strip()
+            new_content = f"---\n{new_metadata}\n---\n{self.content}"
 
-    def check_md(self, param, saved=None):
-        if isinstance(param, dict):
-            data = param
+        with open(self.path, 'w', encoding='utf-8') as file:
+            file.seek(0)
+            file.write(new_content)
+            file.truncate()
+
+    @property
+    def archived(self):
+        return self.path in self.vault.archive_files
+
+    def archive(self):
+        destination = self.vault.archive_folder / self.path.name
+        if destination not in self.vault.archive:
+            self.vault.archive_folder.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(self.path), destination)
+            self.path = destination
+        return self
+
+    def recover(self):
+        destination = self.vault.mods_folder / self.path.name
+        if not destination.exists():
+            self.vault.mods_folder.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(self.path), destination)
+            self.path = destination
+        return self
+
+    @property
+    def enabled(self):
+        return bool(self.get("Enabled"))
+
+    def enable(self):
+        self.set("Enabled", True)
+        return self
+
+    def disable(self):
+        self.set("Enabled", False)
+        return self
+
+    def toggle(self, state=None):
+        if state is not None:
+            self.enable() if state else self.disable()
+            return self
         else:
-            if saved:
-                data = self.prism.get_data_from_saved(path=param, saved=saved)
-            else:
-                data = self.prism.get_data(path=param)
-        return (self.mod_folder / f"{data['name']}.md").is_file()
-
-    def turn_mod_state(self, param, saved=None, mode=None):
-        thread = threading.Thread(target=self._turn_mod_state, args=(param, saved, mode))
-        thread.start()
-
-    def _turn_mod_state(self, param, saved=None, mode=None):
-        if isinstance(param, dict):
-            data = param
-        else:
-            if saved:
-                data = self.prism.get_data_from_saved(path=param, saved=saved)
-            else:
-                data = self.prism.get_data(path=param)
-        if not (mode is None):
-            data["enabled"] = mode
-        with open(self.mod_folder / f"{data['name']}.md", "r+") as f:
-            print("Turning", data["name"])
-            text = f.read()
-            if "Enabled: True" in text:
-                text = text.replace("Enabled: True", f"Enabled: {data["enabled"]}", 1)
-            elif "Enabled: False" in text:
-                text = text.replace("Enabled: False", f"Enabled: {data["enabled"]}", 1)
-            f.seek(0)
-            f.write(text)
-            f.truncate()
-
-    def update_mod(self, param, saved=None):
-        thread = threading.Thread(target=self._update_mod, args=(param, saved))
-        thread.start()
-
-    def _update_mod(self, param, saved=None):
-        if isinstance(param, dict):
-            data = param
-        else:
-            if saved:
-                data = self.prism.get_data_from_saved(path=param, saved=saved)
-            else:
-                data = self.prism.get_data(path=param)
-        with open(self.mod_folder / f"{data['name']}.md", "r+") as f:
-            text = f.read()
-            human_text = text.split("---")[-1]
-            f.seek(0)
-            f.truncate(0)
-            f.write(template(data) + "  " + human_text)
-
-    def delete_mod(self, param, saved=None):
-        thread = threading.Thread(target=self._turn_mod_state, args=(param, saved, False))
-        thread.start()
-        thread = threading.Thread(target=self._delete_mod, args=(param, saved))
-        thread.start()
-
-    def delete_md(self, name):
-        if not self.deleted_folder.exists():
-            os.makedirs(self.deleted_folder)
-        file_path = self.mod_folder / f"{name}.md"
-        if file_path.exists():
-            shutil.move(file_path, self.deleted_folder / f"{name}.md")
-
-    def _delete_mod(self, param, saved=None):
-        if isinstance(param, dict):
-            data = param
-        else:
-            if saved:
-                data = self.prism.get_data_from_saved(path=param, saved=saved)
-            else:
-                data = self.prism.get_data(path=param)
-        if not self.deleted_folder.exists():
-            os.makedirs(self.deleted_folder)
-        file_path = self.mod_folder / f"{data['name']}.md"
-
-        if file_path.exists():
-            shutil.move(file_path, self.deleted_folder / f"{data['name']}.md")
+            self.disable() if self.enabled else self.enable()
+            return self

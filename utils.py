@@ -38,23 +38,30 @@ def format_list(lst: list) -> list:
     """
     return [f"[[{elem}]]" for elem in lst]
 
+def read_whitelist():
+    default = ["enable", "game_versions"]
+
+    if Path("tags_whitelist.txt").exists():
+        with open("tags_whitelist.txt", "r") as file:
+            return file.read().split("\n")
+    else:
+        with open("tags_whitelist.txt", "w") as file:
+            file.writelines(default)
+            return default
 
 def save_api_key():
     """Asks the user for an API key and stores it in the OS keyring."""
     api_key = input("Enter CurseForge API key: ")
     keyring.set_password("PrismObsidian", "PrismObsidian", api_key)
-
+    return api_key
 
 def get_api_key() -> str:
     """Retrieves the API key from the OS keyring."""
-    return keyring.get_password("PrismObsidian", "PrismObsidian")
+    return keyring.get_password("PrismObsidian", "PrismObsidian") or save_api_key()
 
-def get_suffix(path: Path) -> str:
-    return re.sub(r'(\.jar|\.jar\.disabled)\..*', r'\1', str(path))
+def stem(path: Path | str) -> str:
+    return re.sub(r'(\.jar|\.jar\.disabled|\.pw\.toml|\.md)$', '', str(path.name))
 
-def get_stem(path: Path) -> str:
-    res = re.sub(r'(\.jar|\.jar\.disabled)$', '', path.stem)
-    return res
-
-def path_without_suffix(path: Path) -> Path:
-    return path.parent / get_stem(path)
+def suffix(path: Path | str) -> str:
+    match = re.search(r'(\.jar\.disabled|\.jar|\.pw\.toml|\.md)$', str(path))
+    return match.group(1) if match else ''

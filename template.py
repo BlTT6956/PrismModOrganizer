@@ -4,18 +4,11 @@ from converter import curseforge_to_modrinth
 
 def template(data):
     return f"""---
-Name: {data["name"]}
-Filename: {data["filename"]}
-Enabled: {data["enabled"]}
-Side: {data['side']}
-{"Client side: " + data['project']['client_side'] + '\n' if data["project"]["client_side"] != "None" else ""}
-{"Server side: " + data['project']['server_side'] + '\n' if data["project"]["server_side"] != "None" else ""}
-{"Dependencies:\n" + "\n".join([f'- "[[{dep}]]"' for dep in data['dependencies']]) + '\n' if data["dependencies"] else ""}
 ---
 ---
 {f'''
 <div style="display: flex; align-items: flex-start; height: 100%;">
-  <img src="{data['project']['icon_url']}" style="align-self: stretch; width: 120px; height: 120px;">
+  <img src="" style="align-self: stretch; width: 120px; height: 120px;">
   <div style="display: flex; flex-direction: column; justify-content: flex-start; height: 100%; flex-grow: 1; margin-left: 20px;">
     <p style="margin: 0; padding: 0;">{data['project']['description']}</p>
     <div style="display: flex; align-items: center; margin-top: auto;">

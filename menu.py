@@ -1,73 +1,99 @@
 import sys
 from pathlib import Path
-from obsidian import Obsidian
+import os
+
 from utils import clear_console, save_api_key, get_api_key
 from prism import Prism
 from setting import settings
-from watchdog.observers import Observer
-from tkinter.filedialog import askdirectory
-from tqdm import tqdm
-from observer import EventManager, ModEventsHandler
-import time
+from obsidian import Vault
+from processor import Processor
 
 
 class Menu:
+    @staticmethod
+    def open_txt(file_path):
+        if sys.platform == "win32":
+            os.startfile(file_path)  # Windows
+        elif sys.platform == "darwin":
+            os.system(f"open {file_path}")  # macOS
+        else:
+            os.system(f"xdg-open {file_path}")  # Linux
+
     @classmethod
     def start(cls):
         while True:
+            clear_console()
+            print("\nPrism Mod Organizer\n")
             print("1) Start")
-            print("2) Select instance folder")
-            print("3) Select Obsidian folder")
-            print("4) Insert CurseForge API")
-            print("5) Quit")
+            print("2) Config")
+            print("3) Quit")
             answer = input("~ ")
             match answer:
                 case "1":
+                    clear_console()
                     if not settings.INSTANCE_PATH:
                         instance = cls.select_instance()
                         settings.INSTANCE_PATH = str(instance)
-                    if not settings.OBSIDIAN_PATH:
-                        instance = cls.select_obsidian_path()
-                        settings.OBSIDIAN_PATH = str(instance)
+                    if not settings.OBSIDIAN_MAIN_PATH:
+                        Vault.select_obsidian_vault_folder()
+                    if not settings.OBSIDIAN_MODS_PATH:
+                        Vault.select_obsidian_mods_folder()
+                    if not settings.OBSIDIAN_ARCHIVE_PATH:
+                        Vault.select_obsidian_archive_folder()
+                    if not settings.OBSIDIAN_TEMPLATE_PATH:
+                        Vault.select_obsidian_template()
                     if not get_api_key():
                         save_api_key()
-                    obsidian = Obsidian(settings.OBSIDIAN_PATH)
-                    prism = Prism(settings.INSTANCE_PATH, obsidian)
-                    obsidian.prism = prism
 
-                    for path in tqdm(prism.toml, desc="Loading..."):
-                        if res := prism.single_data(path):
-                            obsidian.create_mod(res)
-                    # for md in obsidian.mods:
-                    #     md_name = str(Path(md.stem))
-                    #     if md_name not in [data["name"] for data in prism.local_data]:
-                    #         obsidian.delete_md(md_name)
+                    process = Processor()
+                    process.startup_mods()
+                    process.run()
 
-                    observer = Observer()
-                    event_manager = EventManager(prism, obsidian)
-                    handler = ModEventsHandler(event_manager)
-                    observer.schedule(handler, Path(settings.INSTANCE_PATH) / "minecraft" / "mods", recursive=True)
-                    observer.schedule(handler, Path(settings.OBSIDIAN_PATH) / settings.OBSIDIAN_MODS_FOLDER, recursive=False)
-                    event_manager.start_ticks()
-                    observer.start()
-                    try:
-                        while True:
-                            time.sleep(0.0001)
-                    except KeyboardInterrupt:
-                        observer.stop()
-                    observer.join()
+
                 case "2":
-                    instance = cls.select_instance()
-                    settings.INSTANCE_PATH = str(instance)
+                    while True:
+                        clear_console()
+                        print("\nPrism Mod Organizer ~ Config\n")
+                        print("1) Back")
+                        print("2) Set CurseForge API")
+                        print("3) Paths config")
+                        print("4) Open properties whitelist")
+                        answer = input("~ ")
+                        match answer:
+                            case "1":
+                                break
+                            case "2":
+                                save_api_key()
+                            case "3":
+                                while True:
+                                    clear_console()
+                                    print("\nPrism Mod Organizer ~ Config ~ Paths Config\n")
+                                    print("1) Back")
+                                    print("2) Select instance folder")
+                                    print("4) Select main Obsidian Vault folder")
+                                    print("4) Select Obsidian mods folder")
+                                    print("5) Select Obsidian archive folder")
+                                    print("6) Select a template for mods in Obsidian")
+                                    answer = input("~ ")
+
+                                    match answer:
+                                        case "1":
+                                            break
+                                        case "2":
+                                            instance = cls.select_instance()
+                                            settings.INSTANCE_PATH = str(instance)
+                                        case "3":
+                                            Vault.select_obsidian_vault_folder()
+                                        case "4":
+                                            Vault.select_obsidian_mods_folder()
+                                        case "5":
+                                            Vault.select_obsidian_archive_folder()
+                                        case "6":
+                                            Vault.select_obsidian_template()
+                            case "4":
+                                Menu.open_txt("tags_whitelist.txt")
                 case "3":
-                    instance = cls.select_obsidian_path()
-                    settings.OBSIDIAN_PATH = str(instance)
-                case "4":
-                    save_api_key()
-                case "5":
                     cls.quit()
-                case _:
-                    clear_console()
 
 
     @classmethod
@@ -82,10 +108,6 @@ class Menu:
                 if answer == str(index):
                     return instance
             clear_console()
-
-    @classmethod
-    def select_obsidian_path(cls):
-        return Path(askdirectory())
 
     @classmethod
     def quit(cls):
