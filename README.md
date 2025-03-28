@@ -1,30 +1,30 @@
 # PrismModOrganizer  
 
-PrismModOrganizer is a tool designed for managing mods in **Prism Launcher**. It fetches mod data from **Modrinth** and **CurseForge**, generates `.md` files, and continuously syncs them while the program is running. It tracks any changes to mods whether they are added, enabled, disabled, or removed and automatically updates the corresponding `.md` files.  
-  
-## FAQ ❓
+PrismModOrganizer is a tool designed for managing mods in Prism Launcher with seamless integration into Obsidian. It fetches mod data from Modrinth and CurseForge, automatically generates `.md` files, and keeps them continuously synced while running. The program tracks any changes to mods—whether they are added, enabled, disabled, or removed—and updates the corresponding `.md` files in your Obsidian vault.  
 
-### How to work with CurseForge?
+## ❓ FAQ  
 
-To use **CurseForge** with PrismModOrganizer, you need to provide your **API key**. Here's how to get it:
+### How to use CurseForge?  
 
-1. Visit [CurseForge API Keys](https://console.curseforge.com/#/api-keys).
-2. Generate a new API key.
-3. Enter this key into the program’s **CurseForge Integration** settings.
+To integrate CurseForge with PrismModOrganizer, you need to provide an API key:  
 
-### How can I make properties in `.md` files more compact?
+1. Visit the [CurseForge API Keys](https://www.curseforge.com) page.  
+2. Generate a new API key.  
+3. Enter this key in the program’s CurseForge integration settings.  
 
-You can simplify the properties displayed in `.md` files by hiding unnecessary fields. To do this:
+### How can I make properties in `.md` files more compact?  
 
-1. Open the `tags_whitelist.txt` file.
-2. Add the names of the properties you want to keep visible. This will hide others, but they’ll still be searchable.
+You can simplify the displayed properties in `.md` files by hiding unnecessary fields:  
 
-To activate this feature, follow these steps:
+1. Open the `tags_whitelist.txt` file.  
+2. Add the names of the properties you want to keep visible. Others will be hidden but will remain searchable.  
 
-1. Open **Obsidian**.
-2. Go to **Appearance** > **CSS snippets**.
-3. Enable the snippets created by the program during its first run.
+To activate this feature:  
 
-## Reporting Issues 🐞
+1. Open **Obsidian**.  
+2. Go to **Settings > Appearance > CSS Snippets**.  
+3. Enable the CSS snippets created by the program during its first run.  
 
-If you encounter any bugs or have feature suggestions, please submit them on the [GitHub Issues page](#). We value your feedback!
+## 🐞 Reporting Issues  
+
+If you encounter any bugs or have feature suggestions, please submit them on [GitHub Issues](#). Your feedback helps improve PrismModOrganizer!  
