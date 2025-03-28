@@ -1,6 +1,6 @@
 # PrismModOrganizer  
 
-PrismModOrganizer is a tool designed for managing mods in [Prism Launcher](https://prismlauncher.org/) with seamless integration into [Obsidian](https://obsidian.md/). It fetches mod data from (Modrinth)[https://modrinth.com/] and (CurseForge)[https://www.curseforge.com/], automatically generates `.md` files, and keeps them continuously synced while running. The program tracks any changes to mods—whether they are added, enabled, disabled, or removed—and updates the corresponding `.md` files in your Obsidian vault.  
+PrismModOrganizer is a tool designed for managing mods in [Prism Launcher](https://prismlauncher.org/) with seamless integration into [Obsidian](https://obsidian.md/). It fetches mod data from [Modrinth](https://modrinth.com/) and [CurseForge](https://www.curseforge.com/), automatically generates `.md` files, and keeps them continuously synced while running. The program tracks any changes to mods—whether they are added, enabled, disabled, or removed—and updates the corresponding `.md` files in your Obsidian vault.  
 
 ## ❓ FAQ  
 
