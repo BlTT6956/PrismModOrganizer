@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 import os
 
-from utils import clear_console, save_api_key, get_api_key
+from utils import clear_console, save_api_key, get_api_key, read_whitelist
 from prism import Prism
 from setting import settings
 from obsidian import Vault
@@ -98,6 +98,7 @@ class Menu:
                                         case "6":
                                             Vault.select_obsidian_template()
                             case "4":
+                                read_whitelist()
                                 Menu.open_txt("tags_whitelist.txt")
                             case "5":
                                 Vault.reset_template()

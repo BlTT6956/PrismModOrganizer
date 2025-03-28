@@ -109,9 +109,19 @@ class Vault:
 
     @staticmethod
     def select_obsidian_template():
-        print("Select a template for mods in Obsidian...")
-        instance = Vault.select_obsidian_path("Select a template for mods in Obsidian...")
-        settings.OBSIDIAN_TEMPLATE_PATH = str(instance)
+        while True:
+            print("1) Generate a standard template file in your Obsidian Vault folder")
+            print("2) Select template file")
+            answer = input("~ ")
+            match answer:
+                case "1":
+                    settings.OBSIDIAN_TEMPLATE_PATH = str(Path(settings.OBSIDIAN_MAIN_PATH) / "template.md")
+                    Vault.reset_template()
+                    return
+                case "2":
+                    instance = Vault.select_obsidian_path("Select a template for mods in Obsidian...")
+                    settings.OBSIDIAN_TEMPLATE_PATH = str(instance)
+                    return
 
     def find_mod(self, key, value):
         return next((mod for mod in self.mods if mod.get(key) == value), None)
