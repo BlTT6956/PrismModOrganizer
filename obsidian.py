@@ -24,7 +24,6 @@ class Vault:
         if not self.template_path.exists():
             self.template_path.touch()
 
-        self.whitelist = read_whitelist()
         self.whitelist_snippet()
         self.hide_prop_add_button_snippet()
 
@@ -68,7 +67,7 @@ class Vault:
             f.write("  display: none !important;\n")
             f.write("}\n\n")
 
-            for prop in self.whitelist:
+            for prop in read_whitelist():
                 f.write(f"div.metadata-properties > div.metadata-property[data-property-key=\"{prop}\"] {{\n")
                 f.write("  display: flex !important;\n")
                 f.write("}\n")
